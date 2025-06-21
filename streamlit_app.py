@@ -1,56 +1,152 @@
+import logging
+import os
 import streamlit as st
+#from model_serving_utils import query_endpoint
+from databricks import sql
+import pandas as pd
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
+load_dotenv() 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Ensure environment variable is set correctly
+#assert os.getenv('SERVING_ENDPOINT'), "SERVING_ENDPOINT must be set in app.yaml."
+
+def get_user_info():
+    headers = st.context.headers
+    return dict(
+        user_name=headers.get("X-Forwarded-Preferred-Username"),
+        user_email=headers.get("X-Forwarded-Email"),
+        user_id=headers.get("X-Forwarded-User"),
+    )
+
+user_info = get_user_info()
+
+st.set_page_config(
+    page_title = "chatSenegal2050",
+    page_icon = "💬",
+    initial_sidebar_state = "expanded"
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+# Streamlit app
+if "visibility" not in st.session_state:
+    st.session_state.visibility = "visible"
+    st.session_state.disabled = False
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+st.title("Senegal 2050 Chatbot-Beta")
+st.markdown(
+    "Ce Chatbot repond a des questions sur les communiques du Conseil des Ministres du Senegal. "
+#   "[Databricks docs](https://docs.databricks.com/aws/en/generative-ai/agent-framework/chat-app) "
+)
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
+# Define a custom CSS style
+m = st.markdown("""<style> div.stButton > button:first-child {color:white; border: none; background-color: rgb(123, 208, 243);
+                    } </style>""", unsafe_allow_html = True)
+
+connection = sql.connect(
+    server_hostname = os.getenv("DBRX_SERVER_HOSTNAME"), ## TO DO add this to env var
+    http_path = os.getenv("DBRX_HTTP_PATH"),
+    access_token = os.getenv("DATABRICKS_TOKEN"),
+)
+
+cursor = connection.cursor()
+
+cursor.execute("SELECT * FROM workspace.senegal_2050.communiques_conseil_des_ministres")
+res_query = cursor.fetchall()
+cursor.close()
+connection.close()
+dicts = [row.asDict() for row in res_query]
+df_cm = pd.DataFrame(dicts)
+
+with st.sidebar:
+    list_cm_dates = list(df_cm["date_conseil_ministres"].unique())
+    list_cm_dates.sort(reverse=True)
+    st.title('Quel conseil des Ministres vous interessse?')
+    date_cm_user = None
+    # Ask for the project ID
+    #date_cm_user_input = st.text_input("Choisissez une date de Conseil des Ministres")
+    date_cm_user_input = st.selectbox(
+        label="Choose the document", 
+        options=list_cm_dates,
+        index=0
+    )
+    st.write("")
+
+    contenue_communique_cm = "\n".join(df_cm.loc[df_cm["date_conseil_ministres"] == date_cm_user_input, "communique_conseil_ministres"])
+
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    if message["role"] != "system" and ("## Context \n Voici le communique du conseil des ministres" not in message['content']):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
+# Accept user input
+prompt = None
+# Create to columns and display 2 example buttons
+col1, col2 = st.columns(2)
+example_prompt1 = "Quelles sont les directives du president de la Republique concernant le Ministre d'Etat?"
+example_prompt2 = "Quelles sont les directives du premier ministre de concernant le Ministre d'Etat?"
+button_example_1, button_example_2 = None, None
+with col1:
+    button_example_1 = st.button(example_prompt1)
+with col2:
+    button_example_2 = st.button(example_prompt2)
 
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+if button_example_1:
+    prompt = example_prompt1
+if button_example_2:
+    prompt = example_prompt2
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
+written_prompt = st.chat_input("Quelles sont les directives du president de la Republique concernant le Ministre d'Etat?")
+
+if written_prompt:
+    prompt = written_prompt
+
+system_prompt = """Tu es un assistant qui va repondre des questions a partit du rapport du Conseil des ministres du gouvernement senegalais, notamment les questions relatives aux directives presidentielles et celles du premier ministre. Le conseil des ministres se tient chaque semaine.
+Reponds precisement a la question pose en francais en utilisant le rapport du conseil des ministres qui te sera fourni.
+""".strip()
+all_messages = "\n".join([message["content"] for message in st.session_state.messages])
+if not system_prompt in all_messages:
+    st.session_state.messages.append({"role": "system", "content": system_prompt})
+
+if prompt:
+    if contenue_communique_cm not in all_messages:
+        st.session_state.messages.append({
+            "role": "user",
+            "content":f"## Context \n Voici le communique du conseil des ministres: {contenue_communique_cm}"
+        })
+
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    # Display user message in chat message container
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Display assistant response in chat message container
+    with st.chat_message("assistant"):
+        client = OpenAI(
+            api_key=os.getenv("DATABRICKS_TOKEN"),
+            base_url=f"{os.getenv('DBRX_SERVER_HOSTNAME')}/serving-endpoints"
         )
 
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        chat_completion = client.chat.completions.create(
+            messages=st.session_state.messages,
+            model="databricks-meta-llama-3-1-8b-instruct",
+            max_tokens=1000
+        )
+
+        assistant_response = chat_completion.choices[0].message.content
+
+        st.markdown(assistant_response)
+
+    # Add assistant response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
