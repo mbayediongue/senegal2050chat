@@ -44,10 +44,6 @@ st.markdown(
 )
 
 
-# Define a custom CSS style
-m = st.markdown("""<style> div.stButton > button:first-child {color:white; border: none; background-color: rgb(123, 208, 243);
-                    } </style>""", unsafe_allow_html = True)
-
 connection = sql.connect(
     server_hostname = os.getenv("DBRX_SERVER_HOSTNAME"), ## TO DO add this to env var
     http_path = os.getenv("DBRX_HTTP_PATH"),
@@ -93,8 +89,8 @@ for message in st.session_state.messages:
 prompt = None
 # Create to columns and display 2 example buttons
 col1, col2 = st.columns(2)
-example_prompt1 = "Quelles sont les directives du president de la Republique concernant le Ministre d'Etat?"
-example_prompt2 = "Quelles sont les directives du premier ministre de concernant le Ministre d'Etat?"
+example_prompt1 = "Quelles sont les directives du president de la Republique?"
+example_prompt2 = "Quelles sont les directives du premier ministre?"
 button_example_1, button_example_2 = None, None
 with col1:
     button_example_1 = st.button(example_prompt1)
