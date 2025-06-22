@@ -67,7 +67,7 @@ with st.sidebar:
     # Ask for the project ID
     #date_cm_user_input = st.text_input("Choisissez une date de Conseil des Ministres")
     date_cm_user_input = st.selectbox(
-        label="Choose the document", 
+        label="Choix Date Conseil des Ministres", 
         options=list_cm_dates,
         index=0
     )
@@ -102,7 +102,7 @@ if button_example_1:
 if button_example_2:
     prompt = example_prompt2
 
-written_prompt = st.chat_input("Quelles sont les directives du president de la Republique concernant le Ministre d'Etat?")
+written_prompt = st.chat_input("Posez-vos questions sur les conseils des ministres ici...")
 
 if written_prompt:
     prompt = written_prompt
