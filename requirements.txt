@@ -2,3 +2,4 @@ streamlit
 openai
 dotenv
 databricks-sql-connector==3.4.0
+mistralai

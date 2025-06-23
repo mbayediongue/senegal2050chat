@@ -7,6 +7,7 @@ import pandas as pd
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+from mistralai import Mistral
 
 load_dotenv() 
 # Set up logging
@@ -37,13 +38,13 @@ if "visibility" not in st.session_state:
     st.session_state.visibility = "visible"
     st.session_state.disabled = False
 
-st.title("Senegal 2050 Chatbot-Beta")
+st.title("Senegal 2050 Chatbot")
 st.markdown(
     "Ce Chatbot repond a des questions sur les communiques du Conseil des Ministres du Senegal. "
 #   "[Databricks docs](https://docs.databricks.com/aws/en/generative-ai/agent-framework/chat-app) "
 )
 
-
+"""
 connection = sql.connect(
     server_hostname = os.getenv("DBRX_SERVER_HOSTNAME"), ## TO DO add this to env var
     http_path = os.getenv("DBRX_HTTP_PATH"),
@@ -58,7 +59,9 @@ cursor.close()
 connection.close()
 dicts = [row.asDict() for row in res_query]
 df_cm = pd.DataFrame(dicts)
+"""
 
+df_cm = pd.read_csv("./data/conseil_des_ministres.csv")
 with st.sidebar:
     list_cm_dates = list(df_cm["date_conseil_ministres"].unique())
     list_cm_dates.sort(reverse=True)
@@ -129,15 +132,21 @@ if prompt:
 
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
-        client = OpenAI(
-            api_key=os.getenv("DATABRICKS_TOKEN"),
-            base_url=f"{os.getenv('DBRX_SERVER_HOSTNAME')}/serving-endpoints"
-        )
+        #client = OpenAI(
+        #    api_key=os.getenv("DATABRICKS_TOKEN"),
+        #    base_url=f"{os.getenv('DBRX_SERVER_HOSTNAME')}/serving-endpoints"
+        #)
+        client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
 
-        chat_completion = client.chat.completions.create(
-            messages=st.session_state.messages,
-            model="databricks-meta-llama-3-1-8b-instruct",
-            max_tokens=1000
+        #chat_completion = client.chat.completions.create(
+        #    messages=st.session_state.messages,
+        #    model="databricks-meta-llama-3-1-8b-instruct",
+        #    max_tokens=1000
+        #)
+
+        chat_completion = client.chat.complete(
+            model= "ministral-8b-latest",
+            messages = st.session_state.messages,
         )
 
         assistant_response = chat_completion.choices[0].message.content
@@ -146,3 +155,5 @@ if prompt:
 
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+
+
