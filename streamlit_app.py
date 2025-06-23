@@ -14,9 +14,6 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Ensure environment variable is set correctly
-#assert os.getenv('SERVING_ENDPOINT'), "SERVING_ENDPOINT must be set in app.yaml."
-
 def get_user_info():
     headers = st.context.headers
     return dict(
@@ -44,22 +41,6 @@ st.markdown(
 #   "[Databricks docs](https://docs.databricks.com/aws/en/generative-ai/agent-framework/chat-app) "
 )
 
-"""
-connection = sql.connect(
-    server_hostname = os.getenv("DBRX_SERVER_HOSTNAME"), ## TO DO add this to env var
-    http_path = os.getenv("DBRX_HTTP_PATH"),
-    access_token = os.getenv("DATABRICKS_TOKEN"),
-)
-
-cursor = connection.cursor()
-
-cursor.execute("SELECT * FROM workspace.senegal_2050.communiques_conseil_des_ministres")
-res_query = cursor.fetchall()
-cursor.close()
-connection.close()
-dicts = [row.asDict() for row in res_query]
-df_cm = pd.DataFrame(dicts)
-"""
 
 df_cm = pd.read_csv("./data/conseil_des_ministres.csv")
 with st.sidebar:
@@ -136,13 +117,13 @@ if prompt:
         #    api_key=os.getenv("DATABRICKS_TOKEN"),
         #    base_url=f"{os.getenv('DBRX_SERVER_HOSTNAME')}/serving-endpoints"
         #)
-        client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
-
+        
         #chat_completion = client.chat.completions.create(
         #    messages=st.session_state.messages,
         #    model="databricks-meta-llama-3-1-8b-instruct",
         #    max_tokens=1000
         #)
+        client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
 
         chat_completion = client.chat.complete(
             model= "ministral-8b-latest",
