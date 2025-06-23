@@ -2,9 +2,9 @@ import logging
 import os
 import streamlit as st
 #from model_serving_utils import query_endpoint
-from databricks import sql
+#from databricks import sql
 import pandas as pd
-from openai import OpenAI
+#from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from mistralai import Mistral
@@ -113,16 +113,6 @@ if prompt:
 
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
-        #client = OpenAI(
-        #    api_key=os.getenv("DATABRICKS_TOKEN"),
-        #    base_url=f"{os.getenv('DBRX_SERVER_HOSTNAME')}/serving-endpoints"
-        #)
-        
-        #chat_completion = client.chat.completions.create(
-        #    messages=st.session_state.messages,
-        #    model="databricks-meta-llama-3-1-8b-instruct",
-        #    max_tokens=1000
-        #)
         client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
 
         chat_completion = client.chat.complete(
