@@ -35,7 +35,7 @@ if "visibility" not in st.session_state:
     st.session_state.visibility = "visible"
     st.session_state.disabled = False
 
-st.title("Senegal 2050 Chatbot")
+st.title("Conseil Ministre Chatbot")
 st.markdown(
     "Ce Chatbot repond a des questions sur les communiques du Conseil des Ministres du Senegal. "
 #   "[Databricks docs](https://docs.databricks.com/aws/en/generative-ai/agent-framework/chat-app) "
